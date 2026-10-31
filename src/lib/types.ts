@@ -36,7 +36,7 @@ export type Order = {
   status: 'todo' | 'in_progress' | 'ready' | 'delivered' | 'cancelled'
   notes: string | null
 }
-export type Category = { id: string; name: string }
+export type Category = { id: string; name: string; color: string }
 export type PaymentRecord = {
   id: string
   amount: number

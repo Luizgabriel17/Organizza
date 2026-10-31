@@ -9,6 +9,7 @@ create table public.categories (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families(id) on delete cascade,
   name text not null check (length(trim(name)) between 1 and 80),
+  color text not null default '#4F7CAC' check (color ~ '^#[0-9A-Fa-f]{6}$'),
   created_at timestamptz not null default now(),
   unique (family_id, name),
   unique (family_id, id)

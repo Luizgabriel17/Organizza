@@ -99,6 +99,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .stat-card strong { overflow-wrap: anywhere; color: #2d3b32; font-size: 18px; letter-spacing: -.35px; }
 .stat-card small { color: #9aa39e; font-size: 10px; }
 .content-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.month-expense-summary { display: flex; flex-direction: column; gap: 8px; }
+.month-expense-summary .panel-heading { margin-bottom: 0; }
+.month-expense-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.month-expense-values > div { display: flex; flex-direction: column; gap: 5px; padding: 12px; background: #fafbfa; border-radius: 8px; }
+.month-expense-values span, .monthly-total-heading span, .monthly-total-breakdown { color: #78847c; font-size: 10px; }
+.month-expense-values strong { color: #2d3b32; font-size: 16px; }
+.monthly-totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.monthly-total-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #fafbfa; border: 1px solid #edf0ed; border-radius: 9px; }
+.monthly-total-card.current { background: #f0f7f1; border-color: #b9d8c2; }
+.monthly-total-heading, .monthly-total-breakdown { display: flex; justify-content: space-between; gap: 8px; }
+.monthly-total-heading strong { color: #45554a; font-size: 12px; text-transform: capitalize; }
+.monthly-total-amount { color: #2d3b32; font-size: 17px; }
+.monthly-total-breakdown { flex-wrap: wrap; }
+.monthly-total-breakdown b { color: #58655d; font-weight: 650; }
 .panel { padding: 20px; background: #fff; border: 1px solid #edf0ed; border-radius: 12px; box-shadow: 0 2px 7px #293b3005; }
 .panel h2 { margin: 0 0 7px; font-size: 15px; letter-spacing: -.2px; }
 .panel-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 13px; }
@@ -192,10 +206,16 @@ td.amount { font-weight: 700; color: #34463a; }
 .settings-links a strong { color: #3b4940; font-size: 11px; }
 .settings-links a small { color: #88938c; font-size: 9px; }
 .category-list { display: flex; gap: 7px; flex-wrap: wrap; margin: 15px 0; }
-.category-chip { padding: 6px 10px; color: #4b6e55; background: #edf5ee; border-radius: 20px; font-size: 10px; }
+.category-chip { padding: 6px 10px; color: color-mix(in srgb, var(--category-color) 76%, #18241b); background: color-mix(in srgb, var(--category-color) 14%, white); border: 1px solid color-mix(in srgb, var(--category-color) 28%, white); border-radius: 20px; font-size: 10px; }
 .category-chip { display: inline-flex; align-items: center; gap: 6px; }
-.category-chip button { display: inline-grid; place-items: center; padding: 1px; color: #60806a; background: transparent; border: 0; border-radius: 4px; }
+.category-chip button { display: inline-grid; place-items: center; padding: 1px; color: color-mix(in srgb, var(--category-color) 78%, #18241b); background: transparent; border: 0; border-radius: 4px; }
 .category-chip button:hover { color: #9f4641; background: #fff; }
+.category-badge { width: fit-content; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; padding: 3px 8px; color: color-mix(in srgb, var(--category-color) 76%, #18241b); background: color-mix(in srgb, var(--category-color) 14%, white); border: 1px solid color-mix(in srgb, var(--category-color) 28%, white); border-radius: 20px; font-size: 9px; font-weight: 650; }
+.category-badge::before { width: 7px; height: 7px; content: ''; background: var(--category-color); border-radius: 50%; }
+.category-badge.uncategorized { color: #65716a; background: #eff1f0; border-color: #e5e9e6; }
+.category-badge.uncategorized::before { background: #98a39b; }
+.category-form .field:has(input[type="color"]) { flex: 0 0 76px; }
+.category-form input[type="color"] { width: 100%; padding: 4px; }
 .inline-form { display: flex; align-items: flex-end; gap: 10px; max-width: 600px; margin-top: 17px; }
 .inline-form .field { flex: 1; }
 .loading-state { padding: 28px; color: #748078; text-align: center; font-size: 12px; }
@@ -267,6 +287,7 @@ td.amount { font-weight: 700; color: #34463a; }
   .stat-card strong { font-size: 15px; }
   .stat-card small { font-size: 9px; }
   .content-grid, .orders-grid { grid-template-columns: 1fr; }
+  .month-expense-values { grid-template-columns: 1fr; }
   .panel { padding: 16px; }
   .summary-strip { flex-wrap: wrap; gap: 13px 21px; }
   .summary-strip p { flex-basis: 100%; margin: 0; line-height: 1.5; }

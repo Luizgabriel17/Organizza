@@ -8,12 +8,12 @@ React, TypeScript, Vite, Vercel Functions e Neon PostgreSQL.
 
 ## Mapa das funcionalidades
 
-- **Início (`/`)**: resumo de vendas, contas pendentes/atrasadas, encomendas e valores a receber; atalhos para os cadastros e listas de itens que exigem atenção.
+- **Início (`/`)**: resumo de vendas, contas pendentes/atrasadas, encomendas e valores a receber; mostra também o total, os valores pendentes e os valores pagos das contas com vencimento no mês atual.
 - **Vendas (`/vendas`)**: criar, editar, consultar e excluir logicamente vendas; busca por produto, filtros por período e forma de pagamento, e resumo diário/mensal.
-- **Contas (`/contas`)**: cadastrar e editar contas, atribuir categorias, filtrar por status e mês, buscar por descrição, marcar pagamento integral, cancelar ou excluir logicamente. Recorrências mensais são geradas sem duplicidade até o horizonte configurado no banco.
+- **Contas (`/contas`)**: cadastrar e editar contas, atribuir categorias com cores personalizáveis, filtrar por status e mês, buscar por descrição, marcar pagamento integral, cancelar ou excluir logicamente. Exibe totais por mês de vencimento, separando pendentes e pagas; contas canceladas ficam fora das somas. Recorrências mensais são geradas sem duplicidade até o horizonte configurado no banco.
 - **Encomendas (`/encomendas`)**: cadastrar e editar encomendas com vários itens, buscar por cliente/telefone/produto, filtrar por etapa, avançar produção até a entrega, cancelar/reativar e registrar pagamentos parciais. Detalhes exibem itens e histórico financeiro.
 - **Relatórios (`/relatorios`)**: filtrar por datas, consultar vendas brutas, pagamentos de contas, recebimentos de encomendas, saldos pendentes, etapas e produtos mais vendidos; exportar CSV.
-- **Configurações (`/configuracoes`)**: criar, editar e excluir categorias; exportar os registros da família em JSON.
+- **Configurações (`/configuracoes`)**: criar, editar cores e excluir categorias; exportar os registros da família em JSON.
 - **Busca global**: localizar vendas, contas e encomendas pelo cabeçalho, com atalho direto para os detalhes.
 
 O dashboard e os relatórios não calculam lucro: vendas não registram custo ou estorno. O site não envia lembretes por e-mail, SMS ou notificações push.
@@ -21,7 +21,7 @@ O dashboard e os relatórios não calculam lucro: vendas não registram custo ou
 ## Configuração do banco Neon
 
 1. Crie um projeto PostgreSQL no [Neon](https://neon.tech/).
-2. No SQL Editor do Neon, execute o conteúdo de [`db/schema.sql`](./db/schema.sql). O script cria as tabelas, índices, validações e funções transacionais usadas pelo app.
+2. No SQL Editor do Neon, execute o conteúdo de [`db/schema.sql`](./db/schema.sql). O script cria as tabelas, índices, validações e funções transacionais usadas pelo app. Se o schema já foi instalado, aplique também as migrações em [`db/migrations/`](./db/migrations/) na ordem numérica; elas adicionam cores persistidas às categorias existentes.
 3. Crie o espaço inicial da família no SQL Editor:
 
    ```sql

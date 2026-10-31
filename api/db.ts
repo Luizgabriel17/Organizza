@@ -20,7 +20,7 @@ type JsonRecord = Record<string, unknown>
 
 const columns: Record<TableName, readonly string[]> = {
   families: ['id', 'name', 'created_at', 'updated_at'],
-  categories: ['id', 'family_id', 'name', 'created_at'],
+  categories: ['id', 'family_id', 'name', 'color', 'created_at'],
   sales: ['id', 'family_id', 'sold_at', 'product_name', 'quantity', 'unit_price', 'total_amount', 'payment_method', 'notes', 'created_at', 'updated_at', 'deleted_at'],
   expenses: ['id', 'family_id', 'description', 'category_id', 'amount', 'due_date', 'status', 'paid_at', 'payment_method', 'is_recurring', 'recurrence_frequency', 'recurrence_day', 'recurrence_anchor_id', 'notes', 'created_at', 'updated_at', 'deleted_at'],
   orders: ['id', 'family_id', 'customer_name', 'customer_phone', 'description', 'quantity', 'total_amount', 'order_date', 'due_date', 'delivery_date', 'status', 'notes', 'created_at', 'updated_at', 'deleted_at'],
@@ -29,13 +29,13 @@ const columns: Record<TableName, readonly string[]> = {
 }
 
 const insertable: Partial<Record<TableName, readonly string[]>> = {
-  categories: ['family_id', 'name'],
+  categories: ['family_id', 'name', 'color'],
   sales: ['family_id', 'sold_at', 'product_name', 'quantity', 'unit_price', 'payment_method', 'notes'],
   expenses: ['family_id', 'description', 'category_id', 'amount', 'due_date', 'is_recurring', 'recurrence_frequency', 'recurrence_day', 'recurrence_anchor_id', 'notes'],
 }
 
 const updatable: Partial<Record<TableName, readonly string[]>> = {
-  categories: ['name'],
+  categories: ['name', 'color'],
   sales: ['sold_at', 'product_name', 'quantity', 'unit_price', 'payment_method', 'notes', 'deleted_at'],
   expenses: ['description', 'category_id', 'amount', 'due_date', 'status', 'paid_at', 'payment_method', 'is_recurring', 'recurrence_frequency', 'recurrence_day', 'notes', 'deleted_at'],
   orders: ['status', 'delivery_date', 'deleted_at'],

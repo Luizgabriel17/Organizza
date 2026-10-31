@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useFieldArray, useForm } from 'react-hook-form'
@@ -9,6 +9,7 @@ import {
   Pencil, Trash2, Wallet, X,
 } from 'lucide-react'
 import { errorMessage, date, fortalezaDate, localDate, money } from './lib/format'
+import { formatMonth, groupExpensesByMonth } from './lib/expenses'
 import { db, dbConfigured, type TableName } from './lib/db'
 import type { Category, Expense, Order, OrderItem, PaymentRecord, Sale } from './lib/types'
 
@@ -24,6 +25,7 @@ const useAppState = () => {
   if (!value) throw new Error('Estado da aplicação indisponível')
   return value
 }
+const categoryPalette = ['#4F7CAC', '#7B61A8', '#C46B35', '#2F855A', '#B3475B', '#218C8C', '#9A6B18', '#4F5FA8', '#A34D8F', '#657B42']
 
 export default function App() {
   const [familyId, setFamilyId] = useState('')
@@ -245,6 +247,7 @@ function DashboardPage() {
   const month = today.slice(0, 7)
   const todayTotal = sales.rows.filter((row) => fortalezaDate(row.sold_at) === today).reduce((sum, row) => sum + Number(row.total_amount), 0)
   const monthTotal = sales.rows.filter((row) => fortalezaDate(row.sold_at).slice(0, 7) === month).reduce((sum, row) => sum + Number(row.total_amount), 0)
+  const monthExpenses = groupExpensesByMonth(expenses.rows).find((item) => item.month === month)
   const pendingExpenses = expenses.rows.filter((row) => row.status === 'pending')
   const overdue = pendingExpenses.filter((row) => row.due_date < today)
   const openOrders = orders.rows.filter((row) => ['todo', 'in_progress', 'ready'].includes(row.status))
@@ -281,10 +284,18 @@ function DashboardPage() {
       <section className="stats-grid">
         <StatCard icon={ArrowUpRight} label="Vendas de hoje" value={money(todayTotal)} detail={`${sales.rows.filter((row) => fortalezaDate(row.sold_at) === today).length} registros`} tone="green" />
         <StatCard icon={ShoppingBag} label="Vendas deste mês" value={money(monthTotal)} detail="Total bruto registrado" tone="blue" />
-        <StatCard icon={CreditCard} label="Contas pendentes" value={money(pendingExpenses.reduce((sum, row) => sum + Number(row.amount), 0))} detail={`${pendingExpenses.length} contas`} tone="orange" />
+        <StatCard icon={CreditCard} label="Contas do mês" value={money(monthExpenses?.total ?? 0)} detail={`${monthExpenses?.count ?? 0} contas · ${money(monthExpenses?.pending ?? 0)} pendentes`} tone="orange" />
         <StatCard icon={CircleAlert} label="Contas atrasadas" value={String(overdue.length)} detail={overdue.length ? money(overdue.reduce((sum, row) => sum + Number(row.amount), 0)) : 'Tudo em dia'} tone={overdue.length ? 'red' : 'green'} />
         <StatCard icon={ClipboardList} label="Encomendas em andamento" value={String(openOrders.length)} detail={`${orders.rows.filter((row) => row.status === 'ready').length} prontas para entregar`} tone="blue" />
         <StatCard icon={ArrowDownLeft} label="Falta receber" value={money(toReceive)} detail="Saldo de encomendas abertas" tone="green" />
+      </section>
+      <section className="panel month-expense-summary">
+        <div className="panel-heading"><div><h2>Contas com vencimento em {formatMonth(month)}</h2><p className="muted">{monthExpenses?.count ?? 0} contas ativas no mês</p></div><Link className="text-link" to="/contas">Ver contas <ChevronRight size={16} /></Link></div>
+        <div className="month-expense-values">
+          <div><span>Total do mês</span><strong>{money(monthExpenses?.total ?? 0)}</strong></div>
+          <div><span>Pendentes</span><strong>{money(monthExpenses?.pending ?? 0)}</strong></div>
+          <div><span>Pagas</span><strong>{money(monthExpenses?.paid ?? 0)}</strong></div>
+        </div>
       </section>
       <div className="content-grid">
         <section className="panel"><div className="panel-heading"><div><h2>Contas que precisam de atenção</h2><p className="muted">Vencidas e próximas do vencimento</p></div><Link className="text-link" to="/contas">Ver contas <ChevronRight size={16} /></Link></div>
@@ -428,6 +439,7 @@ function ExpensesPage() {
     && (!period || row.due_date.startsWith(period))
     && (filter === 'all' || row.status === filter || (filter === 'overdue' && row.status === 'pending' && row.due_date < today)),
   )
+  const monthlyTotals = groupExpensesByMonth(rows)
   const recordExpensePayment = async (values: PaymentFormValues) => {
     if (!paymentTarget) return
     setPaymentSaving(true)
@@ -467,9 +479,10 @@ function ExpensesPage() {
     {showForm && <section className="panel form-panel"><div className="panel-heading"><div><h2>{editing ? 'Editar conta' : 'Nova conta'}</h2><p className="muted">As próximas ocorrências mensais são criadas sem duplicidade; dias inexistentes usam o último dia do mês.</p></div><button className="icon-button" onClick={closeExpenseForm} aria-label="Fechar formulário"><X /></button></div>
       <form onSubmit={submit} className="form-grid"><Field label="Nome da conta" error={form.formState.errors.description?.message}><input {...form.register('description')} /></Field><Field label="Valor (R$)" error={form.formState.errors.amount?.message}><input type="number" min="0.01" step="0.01" {...form.register('amount')} /></Field><Field label="Vencimento" error={form.formState.errors.due_date?.message}><input type="date" {...form.register('due_date')} /></Field><Field label="Categoria"><select {...form.register('category_id')}><option value="">Sem categoria</option>{categories.rows.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></Field><label className="checkbox-field"><input type="checkbox" {...form.register('is_recurring')} /> Conta mensal recorrente</label><Field label="Observações"><input {...form.register('notes')} /></Field>
         {saveError && <p className="form-error full-span">{saveError}</p>}<div className="form-actions full-span"><button type="button" className="button secondary" onClick={closeExpenseForm}>Cancelar</button><button className="button primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar conta'}</button></div></form></section>}
-    {error && <ErrorBanner message={error} />}{loading ? <Loading /> : <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Conta</th><th>Vencimento</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead><tbody>{visible.map((row) => { const overdue = row.status === 'pending' && row.due_date < today; return <tr key={row.id}><td><strong>{row.description}</strong><small>{row.is_recurring ? 'Recorrente' : 'Única'}</small></td><td>{date(row.due_date)}</td><td><StatusBadge tone={row.status === 'paid' ? 'green' : overdue ? 'red' : row.status === 'cancelled' ? 'neutral' : 'orange'}>{row.status === 'paid' ? 'Paga' : overdue ? 'Atrasada' : row.status === 'cancelled' ? 'Cancelada' : 'Pendente'}</StatusBadge></td><td className="amount">{money(row.amount)}</td><td className="actions-cell"><button className="icon-button" aria-label={`Detalhes da conta ${row.description}`} onClick={() => setSelected(row)}><Eye size={17} /></button>{row.status === 'pending' && <button className="button small success" disabled={paymentSaving} onClick={() => { setPaymentError(''); setPaymentTarget(row) }}><Check size={15} />Marcar paga</button>}{row.status === 'pending' && <><button className="icon-button" aria-label={`Editar conta ${row.description}`} onClick={() => editExpense(row)}><Pencil size={17} /></button><button className="button small danger-text" onClick={() => void cancel(row)}>Cancelar</button></> }<button className="icon-button danger" aria-label={`Excluir conta ${row.description}`} onClick={() => void remove(row)}><Trash2 size={17} /></button></td></tr>})}</tbody></table>{visible.length === 0 && <EmptyState title="Nenhuma conta encontrada" text={normalizedSearch || period || filter !== 'all' ? 'Tente ajustar a busca ou os filtros.' : 'Cadastre uma conta para começar.'} />}</div></section>}
+    {monthlyTotals.length > 0 && <section className="panel"><div className="panel-heading"><div><h2>Totais por mês</h2><p className="muted">Soma das contas por vencimento; contas canceladas não entram.</p></div></div><div className="monthly-totals">{monthlyTotals.map((summary) => <article className={`monthly-total-card ${summary.month === today.slice(0, 7) ? 'current' : ''}`} key={summary.month}><div className="monthly-total-heading"><strong>{formatMonth(summary.month)}</strong><span>{summary.count} {summary.count === 1 ? 'conta' : 'contas'}</span></div><strong className="monthly-total-amount">{money(summary.total)}</strong><div className="monthly-total-breakdown"><span>Pendente <b>{money(summary.pending)}</b></span><span>Paga <b>{money(summary.paid)}</b></span></div></article>)}</div></section>}
+    {error && <ErrorBanner message={error} />}{loading ? <Loading /> : <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Conta</th><th>Vencimento</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead><tbody>{visible.map((row) => { const overdue = row.status === 'pending' && row.due_date < today; const category = categories.rows.find((item) => item.id === row.category_id); return <tr key={row.id}><td><strong>{row.description}</strong><small>{row.is_recurring ? 'Recorrente' : 'Única'}</small><CategoryBadge category={category} /></td><td>{date(row.due_date)}</td><td><StatusBadge tone={row.status === 'paid' ? 'green' : overdue ? 'red' : row.status === 'cancelled' ? 'neutral' : 'orange'}>{row.status === 'paid' ? 'Paga' : overdue ? 'Atrasada' : row.status === 'cancelled' ? 'Cancelada' : 'Pendente'}</StatusBadge></td><td className="amount">{money(row.amount)}</td><td className="actions-cell"><button className="icon-button" aria-label={`Detalhes da conta ${row.description}`} onClick={() => setSelected(row)}><Eye size={17} /></button>{row.status === 'pending' && <button className="button small success" disabled={paymentSaving} onClick={() => { setPaymentError(''); setPaymentTarget(row) }}><Check size={15} />Marcar paga</button>}{row.status === 'pending' && <><button className="icon-button" aria-label={`Editar conta ${row.description}`} onClick={() => editExpense(row)}><Pencil size={17} /></button><button className="button small danger-text" onClick={() => void cancel(row)}>Cancelar</button></> }<button className="icon-button danger" aria-label={`Excluir conta ${row.description}`} onClick={() => void remove(row)}><Trash2 size={17} /></button></td></tr>})}</tbody></table>{visible.length === 0 && <EmptyState title="Nenhuma conta encontrada" text={normalizedSearch || period || filter !== 'all' ? 'Tente ajustar a busca ou os filtros.' : 'Cadastre uma conta para começar.'} />}</div></section>}
     {paymentTarget && <PaymentDialog title={`Registrar pagamento · ${paymentTarget.description}`} maximum={Number(paymentTarget.amount)} fixedAmount={Number(paymentTarget.amount)} error={paymentError} saving={paymentSaving} onClose={() => setPaymentTarget(null)} onSubmit={recordExpensePayment} />}
-    {selected && <RecordDialog title="Detalhes da conta" onClose={() => setSelected(null)}><DetailLine label="Conta" value={selected.description} /><DetailLine label="Categoria" value={categories.rows.find((category) => category.id === selected.category_id)?.name ?? 'Sem categoria'} /><DetailLine label="Valor" value={money(selected.amount)} /><DetailLine label="Vencimento" value={date(selected.due_date)} /><DetailLine label="Status" value={selected.status === 'paid' ? `Paga em ${date(selected.paid_at)}` : selected.status === 'cancelled' ? 'Cancelada' : selected.due_date < today ? 'Atrasada (continua pendente)' : 'Pendente'} /><DetailLine label="Observações" value={selected.notes || 'Sem observações'} /><h3>Histórico de pagamento</h3>{payments.length ? payments.map((payment) => <div className="list-row" key={payment.id}><div className="row-main"><strong>{money(payment.amount)} · {paymentLabel(payment.payment_method)}</strong><small>{date(payment.paid_at)}{payment.notes ? ` · ${payment.notes}` : ''}</small></div></div>) : <p className="muted">Nenhum pagamento registrado.</p>}{saveError && <p className="form-error">{saveError}</p>}</RecordDialog>}
+    {selected && <RecordDialog title="Detalhes da conta" onClose={() => setSelected(null)}><DetailLine label="Conta" value={selected.description} /><div className="detail-line"><span>Categoria</span><CategoryBadge category={categories.rows.find((category) => category.id === selected.category_id)} /></div><DetailLine label="Valor" value={money(selected.amount)} /><DetailLine label="Vencimento" value={date(selected.due_date)} /><DetailLine label="Status" value={selected.status === 'paid' ? `Paga em ${date(selected.paid_at)}` : selected.status === 'cancelled' ? 'Cancelada' : selected.due_date < today ? 'Atrasada (continua pendente)' : 'Pendente'} /><DetailLine label="Observações" value={selected.notes || 'Sem observações'} /><h3>Histórico de pagamento</h3>{payments.length ? payments.map((payment) => <div className="list-row" key={payment.id}><div className="row-main"><strong>{money(payment.amount)} · {paymentLabel(payment.payment_method)}</strong><small>{date(payment.paid_at)}{payment.notes ? ` · ${payment.notes}` : ''}</small></div></div>) : <p className="muted">Nenhum pagamento registrado.</p>}{saveError && <p className="form-error">{saveError}</p>}</RecordDialog>}
   </div>
 }
 
@@ -699,21 +712,25 @@ function SettingsPage() {
   const { familyId, familyName } = useAppState()
   const { rows, loading, error, reload } = useFamilyRows<Category>('categories')
   const [name, setName] = useState('')
-  const [categoryEdit, setCategoryEdit] = useState<{ id: string; name: string } | null>(null)
+  const [newCategoryColor, setNewCategoryColor] = useState(categoryPalette[0])
+  const [categoryEdit, setCategoryEdit] = useState<{ id: string; name: string; color: string } | null>(null)
   const [message, setMessage] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupError, setBackupError] = useState('')
+  useEffect(() => {
+    setNewCategoryColor(categoryPalette[rows.length % categoryPalette.length])
+  }, [rows.length])
   const addCategory = async (event: FormEvent) => {
     event.preventDefault()
     if (!familyId || !name.trim()) return
-    const { error: insertError } = await db.from('categories').insert({ name: name.trim(), family_id: familyId })
+    const { error: insertError } = await db.from('categories').insert({ name: name.trim(), color: newCategoryColor, family_id: familyId })
     if (insertError) setMessage(errorMessage(insertError))
-    else { setName(''); setMessage('Categoria adicionada.'); reload() }
+    else { setName(''); setNewCategoryColor(categoryPalette[(rows.length + 1) % categoryPalette.length]); setMessage('Categoria adicionada.'); reload() }
   }
   const saveCategory = async (event: FormEvent) => {
     event.preventDefault()
     if (!categoryEdit || !categoryEdit.name.trim()) return
-    const { error: updateError } = await db.from('categories').update({ name: categoryEdit.name.trim() }).eq('id', categoryEdit.id)
+    const { error: updateError } = await db.from('categories').update({ name: categoryEdit.name.trim(), color: categoryEdit.color }).eq('id', categoryEdit.id)
     if (updateError) setMessage(errorMessage(updateError))
     else { setCategoryEdit(null); setMessage('Categoria atualizada.'); reload() }
   }
@@ -753,15 +770,19 @@ function SettingsPage() {
   }
   return <div className="page-stack"><PageHeading title="Configurações" description="Gerencie categorias e exporte os dados da família." />
     <section className="panel"><div className="panel-heading"><div><h2>Espaço da família</h2><p className="muted">Este espaço está aberto publicamente e não exige login.</p></div><span className="status-badge orange">{familyName}</span></div><div className="settings-links"><a href="#categorias"><Settings /><span><strong>Categorias de contas</strong><small>Organize as despesas</small></span><ChevronRight /></a></div></section>
-    <section className="panel" id="categorias"><h2>Categorias de contas</h2>{error && <ErrorBanner message={error} />}{loading ? <Loading /> : <div className="category-list">{rows.map((category) => <span className="category-chip" key={category.id}>{category.name}<button aria-label={`Editar categoria ${category.name}`} onClick={() => setCategoryEdit({ id: category.id, name: category.name })}><Pencil size={13} /></button><button aria-label={`Excluir categoria ${category.name}`} onClick={() => void removeCategory(category)}><X size={13} /></button></span>)}{rows.length === 0 && <p className="muted">Ainda não há categorias cadastradas.</p>}</div>}
-      {categoryEdit && <form className="inline-form" onSubmit={(event) => void saveCategory(event)}><Field label="Editar categoria"><input value={categoryEdit.name} onChange={(event) => setCategoryEdit({ ...categoryEdit, name: event.target.value })} maxLength={80} required /></Field><button className="button primary">Salvar</button><button type="button" className="button secondary" onClick={() => setCategoryEdit(null)}>Cancelar</button></form>}
-      <form className="inline-form" onSubmit={(event) => void addCategory(event)}><Field label="Nova categoria"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required /></Field><button className="button secondary"><Plus size={17} />Adicionar</button></form>{message && <p className={/adicionada|atualizada|excluída/.test(message) ? 'success-message' : 'form-error'}>{message}</p>}
+    <section className="panel" id="categorias"><h2>Categorias de contas</h2><p className="muted">Escolha uma cor para identificar cada categoria nas contas.</p>{error && <ErrorBanner message={error} />}{loading ? <Loading /> : <div className="category-list">{rows.map((category) => <span className="category-chip" key={category.id} style={{ '--category-color': category.color } as CSSProperties}>{category.name}<button aria-label={`Editar categoria ${category.name}`} onClick={() => setCategoryEdit({ id: category.id, name: category.name, color: category.color })}><Pencil size={13} /></button><button aria-label={`Excluir categoria ${category.name}`} onClick={() => void removeCategory(category)}><X size={13} /></button></span>)}{rows.length === 0 && <p className="muted">Ainda não há categorias cadastradas.</p>}</div>}
+      {categoryEdit && <form className="inline-form category-form" onSubmit={(event) => void saveCategory(event)}><Field label="Editar categoria"><input value={categoryEdit.name} onChange={(event) => setCategoryEdit({ ...categoryEdit, name: event.target.value })} maxLength={80} required /></Field><Field label="Cor"><input aria-label="Cor da categoria" type="color" value={categoryEdit.color} onChange={(event) => setCategoryEdit({ ...categoryEdit, color: event.target.value })} /></Field><button className="button primary">Salvar</button><button type="button" className="button secondary" onClick={() => setCategoryEdit(null)}>Cancelar</button></form>}
+      <form className="inline-form category-form" onSubmit={(event) => void addCategory(event)}><Field label="Nova categoria"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required /></Field><Field label="Cor"><input aria-label="Cor da nova categoria" type="color" value={newCategoryColor} onChange={(event) => setNewCategoryColor(event.target.value)} /></Field><button className="button secondary"><Plus size={17} />Adicionar</button></form>{message && <p className={/adicionada|atualizada|excluída/.test(message) ? 'success-message' : 'form-error'}>{message}</p>}
     </section><section className="panel"><h2>Exportação dos dados</h2><p className="muted">Baixe um JSON com os registros da família e seus relacionamentos para consulta/portabilidade. Guarde o arquivo em local privado. A exportação não inclui logs de auditoria e não substitui um backup restaurável do PostgreSQL.</p><button className="button secondary" onClick={() => void exportBackup()} disabled={backupBusy}><ArrowDownLeft size={17} />{backupBusy ? 'Preparando exportação...' : 'Exportar dados da família (JSON)'}</button>{backupError && <ErrorBanner message={backupError} />}</section><section className="panel"><h2>Backup e recuperação</h2><p className="muted">Configure backups do PostgreSQL no painel Neon e teste a restauração periodicamente. Nunca compartilhe a variável privada DATABASE_URL.</p></section>
   </div>
 }
 
 function PageHeading({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="page-heading"><div><h2>{title}</h2><p className="muted">{description}</p></div>{action}</div>
+}
+function CategoryBadge({ category }: { category: Category | undefined }) {
+  if (!category) return <span className="category-badge uncategorized">Sem categoria</span>
+  return <span className="category-badge" style={{ '--category-color': category.color } as CSSProperties}>{category.name}</span>
 }
 function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof House; label: string; value: string; detail: string; tone: string }) {
   return <article className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={20} /></div><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></article>
